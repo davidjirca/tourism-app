@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: travel-app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://travel_user:travel_password@postgres/travel_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - SKYSCANNER_API_KEY=${SKYSCANNER_API_KEY}
+      - NUMBEO_API_KEY=${NUMBEO_API_KEY}
+      - TWILIO_SID=${TWILIO_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - EMAIL_SENDER=${EMAIL_SENDER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+  celery-worker:
+    build: .
+    container_name: travel-celery-worker
+    command: celery -A main.celery_app worker --loglevel=info
+    depends_on:
+      - app
+      - redis
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://travel_user:travel_password@postgres/travel_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - SKYSCANNER_API_KEY=${SKYSCANNER_API_KEY}
+      - NUMBEO_API_KEY=${NUMBEO_API_KEY}
+      - TWILIO_SID=${TWILIO_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - EMAIL_SENDER=${EMAIL_SENDER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+  celery-beat:
+    build: .
+    container_name: travel-celery-beat
+    command: celery -A main.celery_app beat --loglevel=info
+    depends_on:
+      - app
+      - redis
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://travel_user:travel_password@postgres/travel_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - SKYSCANNER_API_KEY=${SKYSCANNER_API_KEY}
+      - NUMBEO_API_KEY=${NUMBEO_API_KEY}
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+  flower:
+    build: .
+    container_name: travel-flower
+    command: celery -A main.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery-worker
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+  postgres:
+    image: postgres:13
+    container_name: travel-postgres
+    environment:
+      - POSTGRES_USER=travel_user
+      - POSTGRES_PASSWORD=travel_password
+      - POSTGRES_DB=travel_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: travel-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: travel-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@travel.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - travel-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  travel-network:
+    driver: bridge

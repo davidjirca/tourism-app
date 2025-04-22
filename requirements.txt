@@ -1,0 +1,14 @@
+fastapi>=0.68.0
+uvicorn>=0.15.0
+sqlalchemy>=1.4.23
+pydantic>=1.8.2
+redis>=4.0.0
+celery>=5.1.2
+passlib>=1.7.4
+twilio>=7.8.0
+requests>=2.26.0
+psycopg2-binary>=2.9.1
+python-multipart>=0.0.5
+email-validator>=1.1.3
+bcrypt>=3.2.0
+flower>=1.0.0
