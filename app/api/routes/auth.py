@@ -3,21 +3,24 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from database import get_db, User
-from auth import (
+from app.api.deps import get_db
+from app.core.security import (
     authenticate_user,
     create_access_token,
     get_password_hash,
     get_current_active_user,
-    ACCESS_TOKEN_EXPIRE_MINUTES
+    verify_password
 )
-from auth_models import UserRegister, Token, UserResponse, UserProfileUpdate
+from app.core.config import settings
+from app.schemas.auth import Token
+from app.schemas.user import UserCreate, UserDB, UserUpdate, PasswordChange
+from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
+@router.post("/register", response_model=UserDB, status_code=status.HTTP_201_CREATED)
+def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     # Check if user with this email already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -53,7 +56,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         )
 
     # Create access token with expiry
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token, expires_at = create_access_token(
         data={"sub": str(user.id), "email": user.email},
         expires_delta=access_token_expires
@@ -67,14 +70,14 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     }
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserDB)
 def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
-@router.put("/me", response_model=UserResponse)
+@router.put("/me", response_model=UserDB)
 def update_user_profile(
-        user_update: UserProfileUpdate,
+        user_update: UserUpdate,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):
@@ -93,20 +96,19 @@ def update_user_profile(
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
 def change_password(
-        old_password: str,
-        new_password: str,
+        password_data: PasswordChange,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):
     # Verify old password
-    if not authenticate_user(db, current_user.email, old_password):
+    if not verify_password(password_data.old_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect current password"
         )
 
     # Update password
-    current_user.hashed_password = get_password_hash(new_password)
+    current_user.hashed_password = get_password_hash(password_data.new_password)
     db.commit()
 
     return {"message": "Password updated successfully"}
