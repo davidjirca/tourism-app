@@ -4,95 +4,86 @@ services:
   app:
     build: .
     container_name: travel-app
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    depends_on:
-      - postgres
-      - redis
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql://travel_user:travel_password@postgres/travel_db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
-      - SKYSCANNER_API_KEY=${SKYSCANNER_API_KEY}
-      - NUMBEO_API_KEY=${NUMBEO_API_KEY}
-      - TWILIO_SID=${TWILIO_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
-      - EMAIL_SENDER=${EMAIL_SENDER}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     volumes:
-      - ./:/app
-    restart: unless-stopped
+      - ./app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - travel-network
 
   celery-worker:
     build: .
     container_name: travel-celery-worker
-    command: celery -A main.celery_app worker --loglevel=info
-    depends_on:
-      - app
-      - redis
-      - postgres
+    command: celery -A app.main.celery_app worker --loglevel=info --concurrency=4
+    restart: unless-stopped
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql://travel_user:travel_password@postgres/travel_db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
-      - SKYSCANNER_API_KEY=${SKYSCANNER_API_KEY}
-      - NUMBEO_API_KEY=${NUMBEO_API_KEY}
-      - TWILIO_SID=${TWILIO_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
-      - EMAIL_SENDER=${EMAIL_SENDER}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     volumes:
-      - ./:/app
-    restart: unless-stopped
+      - ./app:/app/app
+    depends_on:
+      app:
+        condition: service_healthy
     networks:
       - travel-network
 
   celery-beat:
     build: .
     container_name: travel-celery-beat
-    command: celery -A main.celery_app beat --loglevel=info
-    depends_on:
-      - app
-      - redis
-      - postgres
+    command: celery -A app.main.celery_app beat --loglevel=info
+    restart: unless-stopped
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql://travel_user:travel_password@postgres/travel_db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
-      - SKYSCANNER_API_KEY=${SKYSCANNER_API_KEY}
-      - NUMBEO_API_KEY=${NUMBEO_API_KEY}
     volumes:
-      - ./:/app
-    restart: unless-stopped
+      - ./app:/app/app
+    depends_on:
+      app:
+        condition: service_healthy
     networks:
       - travel-network
 
   flower:
     build: .
     container_name: travel-flower
-    command: celery -A main.celery_app flower --port=5555
+    command: celery -A app.main.celery_app flower --port=5555
+    restart: unless-stopped
     ports:
       - "5555:5555"
-    depends_on:
-      - celery-worker
-      - redis
+    env_file: .env
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    restart: unless-stopped
+    depends_on:
+      - celery-worker
     networks:
       - travel-network
 
   postgres:
-    image: postgres:13
+    image: postgres:13-alpine
     container_name: travel-postgres
+    restart: unless-stopped
     environment:
       - POSTGRES_USER=travel_user
       - POSTGRES_PASSWORD=travel_password
@@ -101,38 +92,67 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel_user -d travel_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - travel-network
 
   redis:
     image: redis:6.2-alpine
     container_name: travel-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - travel-network
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: travel-pgadmin
+    restart: unless-stopped
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@travel.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@travel.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - PGADMIN_LISTEN_PORT=80
     ports:
       - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
     depends_on:
       - postgres
-    restart: unless-stopped
     networks:
       - travel-network
+
+  # Add a proxy for production (commented out for development)
+  # nginx:
+  #   image: nginx:1.21-alpine
+  #   container_name: travel-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d
+  #     - ./infrastructure/nginx/ssl:/etc/nginx/ssl
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - travel-network
 
 volumes:
   postgres-data:
   redis-data:
+  pgadmin-data:
 
 networks:
   travel-network:

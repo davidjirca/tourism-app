@@ -1,6 +1,8 @@
 import requests
 import redis
+import json
 from sqlalchemy.orm import Session
+from typing import Dict, Any, List
 
 from app.core.config import settings
 from app.models.destination import Destination
@@ -18,12 +20,17 @@ redis_client = redis.Redis(
 )
 
 
+def get_cache_key(prefix: str, *args):
+    """Create consistent cache keys."""
+    return f"{prefix}:{':'.join(str(arg) for arg in args)}"
+
+
 def fetch_flight_price(destination: Destination) -> float:
     """Fetch flight price data from Skyscanner API."""
     url = f"https://partners.api.skyscanner.net/apiservices/browsequotes/v1.0/US/USD/en-US/LAX-sky/{destination.airport_code}/cheapest?apiKey={settings.SKYSCANNER_API_KEY}"
 
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)  # Add timeout for better reliability
         response.raise_for_status()  # Raise exception for HTTP errors
 
         data = response.json()
@@ -41,12 +48,12 @@ def update_destination_price(db: Session, destination_id: int) -> dict:
         return {"success": False, "message": f"Destination with ID {destination_id} not found"}
 
     # Cache check for flight price
-    cache_key = f"flight_price:{destination.name}"
+    cache_key = get_cache_key("flight_price", destination.name)
     cached_price = redis_client.get(cache_key)
     if cached_price:
         # Return early if we have cached data
         flight_price = float(cached_price)
-        hotel_price = float(redis_client.get(f"hotel_price:{destination.name}") or flight_price * 0.8)
+        hotel_price = float(redis_client.get(get_cache_key("hotel_price", destination.name)) or flight_price * 0.8)
 
         return {
             "success": True,
@@ -71,7 +78,7 @@ def update_destination_price(db: Session, destination_id: int) -> dict:
 
     # Save to cache
     redis_client.setex(cache_key, settings.PRICE_CACHE_EXPIRATION, flight_price)
-    redis_client.setex(f"hotel_price:{destination.name}", settings.PRICE_CACHE_EXPIRATION, hotel_price)
+    redis_client.setex(get_cache_key("hotel_price", destination.name), settings.PRICE_CACHE_EXPIRATION, hotel_price)
 
     # Check for alerts
     check_price_alerts(db, destination.id, flight_price)
@@ -83,6 +90,81 @@ def update_destination_price(db: Session, destination_id: int) -> dict:
         "flight_price": flight_price,
         "hotel_price": hotel_price
     }
+
+
+def batch_update_prices(db: Session, destination_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+    """Update prices for multiple destinations in a batch."""
+    results = {}
+
+    # First check which destinations need updating (not in cache)
+    destinations_to_update = []
+    cached_results = {}
+
+    destinations = db.query(Destination).filter(Destination.id.in_(destination_ids)).all()
+    dest_map = {d.id: d for d in destinations}
+
+    for dest_id in destination_ids:
+        if dest_id not in dest_map:
+            results[dest_id] = {"success": False, "message": f"Destination with ID {dest_id} not found"}
+            continue
+
+        destination = dest_map[dest_id]
+        cache_key = get_cache_key("flight_price", destination.name)
+        cached_price = redis_client.get(cache_key)
+
+        if cached_price:
+            # Use cached data
+            flight_price = float(cached_price)
+            hotel_price = float(redis_client.get(get_cache_key("hotel_price", destination.name)) or flight_price * 0.8)
+
+            cached_results[dest_id] = {
+                "success": True,
+                "message": f"Using cached price data for {destination.name}",
+                "cached": True,
+                "flight_price": flight_price,
+                "hotel_price": hotel_price
+            }
+        else:
+            # Need to update
+            destinations_to_update.append(destination)
+
+    # Update destinations that need it
+    for destination in destinations_to_update:
+        flight_price = fetch_flight_price(destination)
+        hotel_price = flight_price * 0.8
+
+        # Save to database
+        price_history = PriceHistory(
+            destination_id=destination.id,
+            flight_price=flight_price,
+            hotel_price=hotel_price
+        )
+        db.add(price_history)
+
+        # Save to cache
+        cache_key = get_cache_key("flight_price", destination.name)
+        redis_client.setex(cache_key, settings.PRICE_CACHE_EXPIRATION, flight_price)
+        redis_client.setex(get_cache_key("hotel_price", destination.name), settings.PRICE_CACHE_EXPIRATION, hotel_price)
+
+        results[destination.id] = {
+            "success": True,
+            "message": f"Updated price data for {destination.name}",
+            "cached": False,
+            "flight_price": flight_price,
+            "hotel_price": hotel_price
+        }
+
+        # Queue alert check (don't process immediately to avoid transaction issues)
+        from app.tasks.price import check_price_alerts
+        check_price_alerts.delay(destination.id, flight_price)
+
+    # Commit all changes at once
+    db.commit()
+
+    # Add cached results
+    results.update(cached_results)
+
+    return results
 
 
 def check_price_alerts(db: Session, destination_id: int, current_price: float):
@@ -110,12 +192,24 @@ def check_price_alerts(db: Session, destination_id: int, current_price: float):
         if len(prev_prices) >= 2 and prev_prices[1].flight_price > current_price:
             old_price = prev_prices[1].flight_price
 
-            # Send alerts based on user preferences
-            if alert.alert_email:
-                send_email_alert(user.email, destination.name, old_price, current_price)
+            # Send alerts based on user preferences and frequency settings
+            notifications_sent = []
+
+            if alert.alert_email and user.email:
+                email_sent = send_email_alert(user.email, destination.name, old_price, current_price)
+                if email_sent:
+                    notifications_sent.append("email")
 
             if alert.alert_sms and user.phone:
-                send_sms_alert(user.phone, destination.name, old_price, current_price)
+                sms_sent = send_sms_alert(user.phone, destination.name, old_price, current_price)
+                if sms_sent:
+                    notifications_sent.append("sms")
 
             if alert.alert_push:
-                send_push_notification(destination.name, old_price, current_price)
+                push_sent = send_push_notification(destination.name, old_price, current_price)
+                if push_sent:
+                    notifications_sent.append("push")
+
+            # Log the notifications
+            if notifications_sent:
+                print(f"Alert sent for {destination.name} to user {user.id} via {', '.join(notifications_sent)}")
