@@ -62,8 +62,8 @@ async def log_requests(request: Request, call_next):
             "request_id": request_id,
             "method": request.method,
             "path": request.url.path,
-            "client_ip": request.client.host
-        }
+            "client_ip": request.client.host,
+        },
     )
 
     # Add request_id to request state for use in route handlers
@@ -83,7 +83,9 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains"
+    )
 
     logger.info(
         "Request completed",
@@ -93,8 +95,8 @@ async def log_requests(request: Request, call_next):
             "path": request.url.path,
             "status_code": response.status_code,
             "duration_ms": round(process_time * 1000),
-            "content_length": response.headers.get("content-length", 0)
-        }
+            "content_length": response.headers.get("content-length", 0),
+        },
     )
 
     return response
@@ -127,10 +129,7 @@ async def readiness_check(db: Session = Depends(get_db)):
 
     all_healthy = db_status == "ok"
 
-    return {
-        "status": "ok" if all_healthy else "degraded",
-        "database": db_status
-    }
+    return {"status": "ok" if all_healthy else "degraded", "database": db_status}
 
 
 # WebSocket endpoint for push notifications
@@ -175,11 +174,11 @@ def setup_periodic_tasks(sender, **kwargs):
     from app.tasks.price import batch_update_prices
 
     for i in range(0, len(destination_ids), chunk_size):
-        chunk = destination_ids[i:i + chunk_size]
+        chunk = destination_ids[i : i + chunk_size]
         sender.add_periodic_task(
             21600,  # 6 hours
             batch_update_prices.s(chunk),
-            name=f'batch_update_prices_{i // chunk_size}'
+            name=f"batch_update_prices_{i // chunk_size}",
         )
 
     # Still update weather data per destination as it might need more frequent updates
@@ -189,7 +188,7 @@ def setup_periodic_tasks(sender, **kwargs):
             3600,
             "app.tasks.weather.update_weather_data",
             args=(destination.id,),
-            name=f'update_weather_for_{destination.name}'
+            name=f"update_weather_for_{destination.name}",
         )
 
         # Update crime data daily
@@ -197,7 +196,7 @@ def setup_periodic_tasks(sender, **kwargs):
             86400,
             "app.tasks.crime.update_crime_data",
             args=(destination.id,),
-            name=f'update_crime_for_{destination.name}'
+            name=f"update_crime_for_{destination.name}",
         )
 
 

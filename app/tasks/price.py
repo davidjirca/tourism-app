@@ -1,7 +1,11 @@
 from typing import List
 from app.core.celery_app import celery_app
 from app.db.session import SessionLocal
-from app.services.price import update_destination_price, batch_update_prices, check_price_alerts
+from app.services.price import (
+    update_destination_price,
+    batch_update_prices,
+    check_price_alerts,
+)
 
 
 @celery_app.task

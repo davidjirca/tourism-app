@@ -8,10 +8,7 @@ from app.models.weather import WeatherData
 
 # Redis client for caching
 redis_client = redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=0,
-    decode_responses=True
+    host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0, decode_responses=True
 )
 
 
@@ -48,7 +45,10 @@ def update_destination_weather(db: Session, destination_id: int) -> dict:
     """Update weather data for a destination."""
     destination = db.query(Destination).filter(Destination.id == destination_id).first()
     if not destination:
-        return {"success": False, "message": f"Destination with ID {destination_id} not found"}
+        return {
+            "success": False,
+            "message": f"Destination with ID {destination_id} not found",
+        }
 
     # Cache check
     cache_key = f"weather:{destination.name}"
@@ -59,13 +59,16 @@ def update_destination_weather(db: Session, destination_id: int) -> dict:
             "success": True,
             "message": f"Using cached weather data for {destination.name}",
             "cached": True,
-            "weather_score": float(cached_data)
+            "weather_score": float(cached_data),
         }
 
     # Fetch from OpenWeather API
     weather_data = fetch_weather_data(destination)
     if not weather_data:
-        return {"success": False, "message": f"Failed to fetch weather data for {destination.name}"}
+        return {
+            "success": False,
+            "message": f"Failed to fetch weather data for {destination.name}",
+        }
 
     temp = weather_data["main"]["temp"]
     condition = weather_data["weather"][0]["main"]
@@ -78,7 +81,7 @@ def update_destination_weather(db: Session, destination_id: int) -> dict:
         destination_id=destination.id,
         temperature=temp,
         condition=condition,
-        weather_score=weather_score
+        weather_score=weather_score,
     )
     db.add(db_weather_data)
     db.commit()
@@ -92,5 +95,5 @@ def update_destination_weather(db: Session, destination_id: int) -> dict:
         "cached": False,
         "temperature": temp,
         "condition": condition,
-        "weather_score": weather_score
+        "weather_score": weather_score,
     }

@@ -14,7 +14,7 @@ redis_client = redis.Redis(
     port=settings.REDIS_PORT,
     db=settings.REDIS_DB,
     password=settings.REDIS_PASSWORD,
-    decode_responses=True
+    decode_responses=True,
 )
 
 
@@ -26,10 +26,7 @@ class RateLimiter:
     """
 
     def __init__(
-            self,
-            times: int = 5,
-            seconds: int = 60,
-            key_func: Optional[Callable] = None
+        self, times: int = 5, seconds: int = 60, key_func: Optional[Callable] = None
     ):
         """
         Initialize the rate limiter.
@@ -63,7 +60,9 @@ class RateLimiter:
 
         return f"rate_limit:{client_ip}"
 
-    async def is_rate_limited(self, request: Request) -> Dict[str, Union[bool, int, float]]:
+    async def is_rate_limited(
+        self, request: Request
+    ) -> Dict[str, Union[bool, int, float]]:
         """
         Check if the request is rate limited.
 
@@ -99,7 +98,7 @@ class RateLimiter:
                 "limited": current_count >= self.times,
                 "remaining": remaining,
                 "reset_at": reset_at,
-                "current": current_count + 1
+                "current": current_count + 1,
             }
         except redis.RedisError as e:
             # Log the error but don't rate limit if Redis fails
@@ -108,7 +107,7 @@ class RateLimiter:
                 "limited": False,
                 "remaining": self.times - 1,
                 "reset_at": now + self.seconds,
-                "current": 1
+                "current": 1,
             }
 
     async def __call__(self, request: Request):
@@ -133,12 +132,12 @@ class RateLimiter:
                 extra={
                     "client_ip": request.client.host,
                     "path": request.url.path,
-                    "reset_in": reset_in
-                }
+                    "reset_in": reset_in,
+                },
             )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Rate limit exceeded. Try again in {reset_in} seconds."
+                detail=f"Rate limit exceeded. Try again in {reset_in} seconds.",
             )
 
 
@@ -159,4 +158,6 @@ def add_rate_limit_headers(request: Request, response):
 
 # Rate limiters for different routes
 auth_limiter = RateLimiter(times=5, seconds=60)  # 5 requests per minute for auth
-api_limiter = RateLimiter(times=60, seconds=60)  # 60 requests per minute for general API
+api_limiter = RateLimiter(
+    times=60, seconds=60
+)  # 60 requests per minute for general API

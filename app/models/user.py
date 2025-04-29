@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 from app.db.session import Base
 from app.models.destination import user_destinations
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -19,5 +20,9 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
 
     # Relationships
-    alert_preferences = relationship("AlertPreference", back_populates="user", cascade="all, delete-orphan")
-    destinations = relationship("Destination", secondary=user_destinations, back_populates="users")
+    alert_preferences = relationship(
+        "AlertPreference", back_populates="user", cascade="all, delete-orphan"
+    )
+    destinations = relationship(
+        "Destination", secondary=user_destinations, back_populates="users"
+    )

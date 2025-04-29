@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
 
     # Security
-    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change_this_to_a_long_random_string_in_production")
+    SECRET_KEY: str = os.getenv(
+        "JWT_SECRET_KEY", "change_this_to_a_long_random_string_in_production"
+    )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
 
@@ -47,11 +49,17 @@ class Settings(BaseSettings):
     REDIS_DB: int = int(os.getenv("REDIS_DB", 0))
 
     # Cache expiration times (in seconds)
-    WEATHER_CACHE_EXPIRATION: int = int(os.getenv("WEATHER_CACHE_EXPIRATION", 3600))  # 1 hour for weather
-    PRICE_CACHE_EXPIRATION: int = int(os.getenv("PRICE_CACHE_EXPIRATION", 21600))  # 6 hours for prices
+    WEATHER_CACHE_EXPIRATION: int = int(
+        os.getenv("WEATHER_CACHE_EXPIRATION", 3600)
+    )  # 1 hour for weather
+    PRICE_CACHE_EXPIRATION: int = int(
+        os.getenv("PRICE_CACHE_EXPIRATION", 21600)
+    )  # 6 hours for prices
 
     # External APIs
-    OPENWEATHER_API_KEY: str = os.getenv("OPENWEATHER_API_KEY", "your_openweather_api_key")
+    OPENWEATHER_API_KEY: str = os.getenv(
+        "OPENWEATHER_API_KEY", "your_openweather_api_key"
+    )
     SKYSCANNER_API_KEY: str = os.getenv("SKYSCANNER_API_KEY", "your_skyscanner_api_key")
     NUMBEO_API_KEY: str = os.getenv("NUMBEO_API_KEY", "your_numbeo_api_key")
 

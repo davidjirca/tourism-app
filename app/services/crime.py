@@ -8,10 +8,7 @@ from app.models.crime import CrimeData
 
 # Redis client for caching
 redis_client = redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=0,
-    decode_responses=True
+    host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0, decode_responses=True
 )
 
 
@@ -33,7 +30,10 @@ def update_destination_crime_data(db: Session, destination_id: int) -> dict:
     """Update crime data for a destination."""
     destination = db.query(Destination).filter(Destination.id == destination_id).first()
     if not destination:
-        return {"success": False, "message": f"Destination with ID {destination_id} not found"}
+        return {
+            "success": False,
+            "message": f"Destination with ID {destination_id} not found",
+        }
 
     # Cache check
     cache_key = f"crime_index:{destination.name}"
@@ -44,7 +44,7 @@ def update_destination_crime_data(db: Session, destination_id: int) -> dict:
             "success": True,
             "message": f"Using cached crime data for {destination.name}",
             "cached": True,
-            "crime_index": float(cached_data)
+            "crime_index": float(cached_data),
         }
 
     # Fetch from Numbeo API
@@ -61,7 +61,7 @@ def update_destination_crime_data(db: Session, destination_id: int) -> dict:
     db_crime_data = CrimeData(
         destination_id=destination.id,
         crime_index=crime_index,
-        safety_index=safety_index
+        safety_index=safety_index,
     )
     db.add(db_crime_data)
     db.commit()
@@ -74,5 +74,5 @@ def update_destination_crime_data(db: Session, destination_id: int) -> dict:
         "message": f"Updated crime data for {destination.name}",
         "cached": False,
         "crime_index": crime_index,
-        "safety_index": safety_index
+        "safety_index": safety_index,
     }

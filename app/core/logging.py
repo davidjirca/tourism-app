@@ -31,8 +31,11 @@ class JSONFormatter(logging.Formatter):
 
         # Add any custom attributes
         for key, value in record.__dict__.items():
-            if key not in log_record and not key.startswith('_') and isinstance(value,
-                                                                                (str, int, float, bool, type(None))):
+            if (
+                key not in log_record
+                and not key.startswith("_")
+                and isinstance(value, (str, int, float, bool, type(None)))
+            ):
                 log_record[key] = value
 
         # Add traceback for exceptions
@@ -48,7 +51,7 @@ class RequestIDFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if not hasattr(record, 'request_id'):
+        if not hasattr(record, "request_id"):
             record.request_id = str(uuid.uuid4())
         return True
 
@@ -92,9 +95,7 @@ def setup_logging(logger_name: str = "app", log_level: str = "INFO") -> logging.
 
 # Get a new logger with request context
 def get_logger(
-        module_name: str,
-        request_id: Optional[str] = None,
-        user_id: Optional[int] = None
+    module_name: str, request_id: Optional[str] = None, user_id: Optional[int] = None
 ) -> logging.Logger:
     """
     Get a logger for a specific module with request context.
@@ -113,10 +114,10 @@ def get_logger(
     extra = {}
 
     if request_id:
-        extra['request_id'] = request_id
+        extra["request_id"] = request_id
 
     if user_id:
-        extra['user_id'] = user_id
+        extra["user_id"] = user_id
 
     if extra:
         return logging.LoggerAdapter(logger, extra)

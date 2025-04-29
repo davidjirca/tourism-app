@@ -40,7 +40,7 @@ async def readiness_check(db: Session = Depends(get_db)) -> Dict[str, Any]:
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
             password=settings.REDIS_PASSWORD,
-            socket_timeout=2  # Short timeout for health check
+            socket_timeout=2,  # Short timeout for health check
         )
         # Check connection
         redis_client.ping()
@@ -54,7 +54,7 @@ async def readiness_check(db: Session = Depends(get_db)) -> Dict[str, Any]:
         "status": "ok" if all_healthy else "degraded",
         "database": db_status,
         "redis": redis_status,
-        "version": settings.VERSION
+        "version": settings.VERSION,
     }
 
 
@@ -63,7 +63,4 @@ async def version_info() -> Dict[str, str]:
     """
     Get application version information.
     """
-    return {
-        "name": settings.PROJECT_NAME,
-        "version": settings.VERSION
-    }
+    return {"name": settings.PROJECT_NAME, "version": settings.VERSION}

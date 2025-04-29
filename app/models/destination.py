@@ -8,7 +8,7 @@ user_destinations = Table(
     "user_destinations",
     Base.metadata,
     Column("user_id", Integer, ForeignKey("users.id")),
-    Column("destination_id", Integer, ForeignKey("destinations.id"))
+    Column("destination_id", Integer, ForeignKey("destinations.id")),
 )
 
 
@@ -24,7 +24,15 @@ class Destination(Base):
     description = Column(String, nullable=True)
 
     # Relationships
-    price_history = relationship("PriceHistory", back_populates="destination", cascade="all, delete-orphan")
-    users = relationship("User", secondary=user_destinations, back_populates="destinations")
-    crime_data = relationship("CrimeData", back_populates="destination", cascade="all, delete-orphan")
-    weather_data = relationship("WeatherData", back_populates="destination", cascade="all, delete-orphan")
+    price_history = relationship(
+        "PriceHistory", back_populates="destination", cascade="all, delete-orphan"
+    )
+    users = relationship(
+        "User", secondary=user_destinations, back_populates="destinations"
+    )
+    crime_data = relationship(
+        "CrimeData", back_populates="destination", cascade="all, delete-orphan"
+    )
+    weather_data = relationship(
+        "WeatherData", back_populates="destination", cascade="all, delete-orphan"
+    )

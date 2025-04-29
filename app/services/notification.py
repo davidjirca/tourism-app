@@ -48,7 +48,7 @@ def send_sms_alert(user_phone, destination, old_price, new_price):
         message = twilio_client.messages.create(
             body=f"🔥 Flight to {destination} just dropped from ${old_price} to ${new_price}! Book now!",
             from_=settings.TWILIO_PHONE_NUMBER,
-            to=user_phone
+            to=user_phone,
         )
         print(f"✅ SMS sent to {user_phone}: {message.sid}")
         return True
@@ -59,13 +59,15 @@ def send_sms_alert(user_phone, destination, old_price, new_price):
 
 def send_push_notification(destination, old_price, new_price):
     """Send a push notification for a price drop through WebSockets."""
-    notification_data = json.dumps({
-        "type": "price_drop",
-        "destination": destination,
-        "old_price": old_price,
-        "new_price": new_price,
-        "message": f"Price drop alert! {destination} is now ${new_price}!"
-    })
+    notification_data = json.dumps(
+        {
+            "type": "price_drop",
+            "destination": destination,
+            "old_price": old_price,
+            "new_price": new_price,
+            "message": f"Price drop alert! {destination} is now ${new_price}!",
+        }
+    )
 
     success_count = 0
     for client in connected_clients:

@@ -5,16 +5,21 @@ from typing import List, Dict, Any
 from app.api.deps import get_db
 from app.core.security import get_current_active_user, get_optional_current_user
 from app.models.user import User
-from app.services.recommendations import get_personalized_recommendations, get_top_destinations
+from app.services.recommendations import (
+    get_personalized_recommendations,
+    get_top_destinations,
+)
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 
 @router.get("/", response_model=List[Dict[str, Any]])
 def get_recommendations(
-        limit: int = Query(5, ge=1, le=20, description="Maximum number of recommendations to return"),
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_active_user)
+    limit: int = Query(
+        5, ge=1, le=20, description="Maximum number of recommendations to return"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Get personalized destination recommendations for the current user.
@@ -28,9 +33,11 @@ def get_recommendations(
 
 @router.get("/discover", response_model=List[Dict[str, Any]])
 def discover_destinations(
-        limit: int = Query(5, ge=1, le=20, description="Maximum number of destinations to return"),
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_optional_current_user)
+    limit: int = Query(
+        5, ge=1, le=20, description="Maximum number of destinations to return"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_current_user),
 ):
     """
     Discover top destinations based on current weather and prices.

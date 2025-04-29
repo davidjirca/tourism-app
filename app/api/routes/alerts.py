@@ -7,7 +7,11 @@ from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.destination import Destination
 from app.models.alert import AlertPreference
-from app.schemas.alert import AlertPreferenceCreate, AlertPreferenceResponse, AlertPreferenceUpdate
+from app.schemas.alert import (
+    AlertPreferenceCreate,
+    AlertPreferenceResponse,
+    AlertPreferenceUpdate,
+)
 from app.tasks.price import update_price_data
 
 router = APIRouter(prefix="/alerts", tags=["Price Alerts"])
@@ -15,29 +19,34 @@ router = APIRouter(prefix="/alerts", tags=["Price Alerts"])
 
 @router.post("/", response_model=AlertPreferenceResponse)
 def create_alert(
-        alert: AlertPreferenceCreate,
-        background_tasks: BackgroundTasks,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_active_user)
+    alert: AlertPreferenceCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Create a new price alert for a destination."""
-    destination = db.query(Destination).filter(Destination.id == alert.destination_id).first()
+    destination = (
+        db.query(Destination).filter(Destination.id == alert.destination_id).first()
+    )
     if not destination:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Destination not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Destination not found"
         )
 
     # Check if alert already exists for this user and destination
-    existing_alert = db.query(AlertPreference).filter(
-        AlertPreference.user_id == current_user.id,
-        AlertPreference.destination_id == alert.destination_id
-    ).first()
+    existing_alert = (
+        db.query(AlertPreference)
+        .filter(
+            AlertPreference.user_id == current_user.id,
+            AlertPreference.destination_id == alert.destination_id,
+        )
+        .first()
+    )
 
     if existing_alert:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Alert already exists for this destination. Use PUT to update."
+            detail="Alert already exists for this destination. Use PUT to update.",
         )
 
     # Create alert preference
@@ -48,7 +57,7 @@ def create_alert(
         alert_email=alert.alert_email,
         alert_sms=alert.alert_sms,
         alert_push=alert.alert_push,
-        frequency=alert.frequency
+        frequency=alert.frequency,
     )
     db.add(db_alert)
     db.commit()
@@ -65,7 +74,7 @@ def create_alert(
         alert_email=db_alert.alert_email,
         alert_sms=db_alert.alert_sms,
         alert_push=db_alert.alert_push,
-        frequency=db_alert.frequency
+        frequency=db_alert.frequency,
     )
 
     return response
@@ -73,15 +82,20 @@ def create_alert(
 
 @router.get("/", response_model=List[AlertPreferenceResponse])
 def get_alerts(
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_active_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
 ):
     """Get all alerts for the current user."""
-    alerts = db.query(AlertPreference).filter(AlertPreference.user_id == current_user.id).all()
+    alerts = (
+        db.query(AlertPreference)
+        .filter(AlertPreference.user_id == current_user.id)
+        .all()
+    )
 
     result = []
     for alert in alerts:
-        destination = db.query(Destination).filter(Destination.id == alert.destination_id).first()
+        destination = (
+            db.query(Destination).filter(Destination.id == alert.destination_id).first()
+        )
         alert_response = AlertPreferenceResponse(
             id=alert.id,
             destination=destination,
@@ -89,7 +103,7 @@ def get_alerts(
             alert_email=alert.alert_email,
             alert_sms=alert.alert_sms,
             alert_push=alert.alert_push,
-            frequency=alert.frequency
+            frequency=alert.frequency,
         )
         result.append(alert_response)
 
@@ -98,22 +112,25 @@ def get_alerts(
 
 @router.put("/{alert_id}", response_model=AlertPreferenceResponse)
 def update_alert(
-        alert_id: int,
-        alert_data: AlertPreferenceUpdate,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_active_user)
+    alert_id: int,
+    alert_data: AlertPreferenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Update an existing alert."""
     # Find the alert
-    db_alert = db.query(AlertPreference).filter(
-        AlertPreference.id == alert_id,
-        AlertPreference.user_id == current_user.id
-    ).first()
+    db_alert = (
+        db.query(AlertPreference)
+        .filter(
+            AlertPreference.id == alert_id, AlertPreference.user_id == current_user.id
+        )
+        .first()
+    )
 
     if not db_alert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Alert not found or does not belong to current user"
+            detail="Alert not found or does not belong to current user",
         )
 
     # Update alert fields
@@ -126,7 +143,9 @@ def update_alert(
     db.commit()
     db.refresh(db_alert)
 
-    destination = db.query(Destination).filter(Destination.id == db_alert.destination_id).first()
+    destination = (
+        db.query(Destination).filter(Destination.id == db_alert.destination_id).first()
+    )
 
     return AlertPreferenceResponse(
         id=db_alert.id,
@@ -135,27 +154,30 @@ def update_alert(
         alert_email=db_alert.alert_email,
         alert_sms=db_alert.alert_sms,
         alert_push=db_alert.alert_push,
-        frequency=db_alert.frequency
+        frequency=db_alert.frequency,
     )
 
 
 @router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_alert(
-        alert_id: int,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_active_user)
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Delete an alert."""
     # Find the alert
-    db_alert = db.query(AlertPreference).filter(
-        AlertPreference.id == alert_id,
-        AlertPreference.user_id == current_user.id
-    ).first()
+    db_alert = (
+        db.query(AlertPreference)
+        .filter(
+            AlertPreference.id == alert_id, AlertPreference.user_id == current_user.id
+        )
+        .first()
+    )
 
     if not db_alert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Alert not found or does not belong to current user"
+            detail="Alert not found or does not belong to current user",
         )
 
     # Delete the alert

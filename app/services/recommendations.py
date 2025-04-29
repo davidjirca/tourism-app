@@ -18,7 +18,7 @@ redis_client = redis.Redis(
     port=settings.REDIS_PORT,
     db=settings.REDIS_DB,
     decode_responses=True,
-    password=settings.REDIS_PASSWORD
+    password=settings.REDIS_PASSWORD,
 )
 
 
@@ -39,19 +39,28 @@ def _get_feature_matrix(db: Session) -> Tuple[List[int], np.ndarray]:
     # For each destination, get its features
     for dest in destinations:
         # Get latest weather data
-        weather = db.query(WeatherData).filter(
-            WeatherData.destination_id == dest.id
-        ).order_by(WeatherData.timestamp.desc()).first()
+        weather = (
+            db.query(WeatherData)
+            .filter(WeatherData.destination_id == dest.id)
+            .order_by(WeatherData.timestamp.desc())
+            .first()
+        )
 
         # Get latest crime data
-        crime = db.query(CrimeData).filter(
-            CrimeData.destination_id == dest.id
-        ).order_by(CrimeData.timestamp.desc()).first()
+        crime = (
+            db.query(CrimeData)
+            .filter(CrimeData.destination_id == dest.id)
+            .order_by(CrimeData.timestamp.desc())
+            .first()
+        )
 
         # Get latest price data
-        price = db.query(PriceHistory).filter(
-            PriceHistory.destination_id == dest.id
-        ).order_by(PriceHistory.timestamp.desc()).first()
+        price = (
+            db.query(PriceHistory)
+            .filter(PriceHistory.destination_id == dest.id)
+            .order_by(PriceHistory.timestamp.desc())
+            .first()
+        )
 
         # Create feature vector
         feature_vector = [
@@ -71,7 +80,9 @@ def _get_feature_matrix(db: Session) -> Tuple[List[int], np.ndarray]:
 
     # Normalize features to have mean 0 and variance 1
     # This ensures that no single feature dominates the similarity calculation
-    feature_matrix = (feature_matrix - np.mean(feature_matrix, axis=0)) / np.std(feature_matrix, axis=0)
+    feature_matrix = (feature_matrix - np.mean(feature_matrix, axis=0)) / np.std(
+        feature_matrix, axis=0
+    )
 
     return destination_ids, feature_matrix
 
@@ -99,7 +110,7 @@ def compute_destination_similarity(db: Session) -> Dict[str, Any]:
     data = {
         "destination_ids": destination_ids,
         "similarity_matrix": similarity_matrix.tolist(),
-        "updated_at": datetime.now().isoformat()
+        "updated_at": datetime.now().isoformat(),
     }
     redis_client.setex(cache_key, 86400, json.dumps(data))  # Cache for 24 hours
 
@@ -107,7 +118,7 @@ def compute_destination_similarity(db: Session) -> Dict[str, Any]:
 
 
 def get_personalized_recommendations(
-        db: Session, user_id: int, limit: int = 5
+    db: Session, user_id: int, limit: int = 5
 ) -> List[Dict[str, Any]]:
     """
     Get personalized destination recommendations for a user.
@@ -178,15 +189,15 @@ def get_personalized_recommendations(
 
             # Update the maximum similarity score for this destination
             if dest_id in similar_destinations:
-                similar_destinations[dest_id] = max(similar_destinations[dest_id], similarity)
+                similar_destinations[dest_id] = max(
+                    similar_destinations[dest_id], similarity
+                )
             else:
                 similar_destinations[dest_id] = similarity
 
     # Sort destinations by similarity score
     sorted_destinations = sorted(
-        similar_destinations.items(),
-        key=lambda x: x[1],
-        reverse=True
+        similar_destinations.items(), key=lambda x: x[1], reverse=True
     )[:limit]
 
     # Get full destination details
@@ -194,9 +205,9 @@ def get_personalized_recommendations(
     recommendations = []
 
     if recommendation_ids:
-        destinations = db.query(Destination).filter(
-            Destination.id.in_(recommendation_ids)
-        ).all()
+        destinations = (
+            db.query(Destination).filter(Destination.id.in_(recommendation_ids)).all()
+        )
 
         # Create a map from ID to destination object
         dest_map = {d.id: d for d in destinations}
@@ -207,19 +218,26 @@ def get_personalized_recommendations(
                 dest = dest_map[dest_id]
 
                 # Get latest price
-                price = db.query(PriceHistory).filter(
-                    PriceHistory.destination_id == dest.id
-                ).order_by(PriceHistory.timestamp.desc()).first()
+                price = (
+                    db.query(PriceHistory)
+                    .filter(PriceHistory.destination_id == dest.id)
+                    .order_by(PriceHistory.timestamp.desc())
+                    .first()
+                )
 
-                recommendations.append({
-                    "id": dest.id,
-                    "name": dest.name,
-                    "country": dest.country,
-                    "description": dest.description,
-                    "similarity_score": round(similarity * 100),  # Convert to percentage
-                    "current_flight_price": price.flight_price if price else None,
-                    "current_hotel_price": price.hotel_price if price else None,
-                })
+                recommendations.append(
+                    {
+                        "id": dest.id,
+                        "name": dest.name,
+                        "country": dest.country,
+                        "description": dest.description,
+                        "similarity_score": round(
+                            similarity * 100
+                        ),  # Convert to percentage
+                        "current_flight_price": price.flight_price if price else None,
+                        "current_hotel_price": price.hotel_price if price else None,
+                    }
+                )
 
     return recommendations
 
@@ -236,57 +254,56 @@ def get_top_destinations(db: Session, limit: int = 5) -> List[Dict[str, Any]]:
     one_week_ago = datetime.now() - timedelta(days=7)
 
     # Get destinations with good weather
-    weather_subq = db.query(
-        WeatherData.destination_id,
-        WeatherData.weather_score
-    ).filter(
-        WeatherData.timestamp >= one_week_ago
-    ).order_by(
-        WeatherData.destination_id,
-        WeatherData.timestamp.desc()
-    ).distinct(
-        WeatherData.destination_id
-    ).subquery()
+    weather_subq = (
+        db.query(WeatherData.destination_id, WeatherData.weather_score)
+        .filter(WeatherData.timestamp >= one_week_ago)
+        .order_by(WeatherData.destination_id, WeatherData.timestamp.desc())
+        .distinct(WeatherData.destination_id)
+        .subquery()
+    )
 
     # Get latest prices
-    price_subq = db.query(
-        PriceHistory.destination_id,
-        PriceHistory.flight_price,
-        PriceHistory.hotel_price
-    ).order_by(
-        PriceHistory.destination_id,
-        PriceHistory.timestamp.desc()
-    ).distinct(
-        PriceHistory.destination_id
-    ).subquery()
+    price_subq = (
+        db.query(
+            PriceHistory.destination_id,
+            PriceHistory.flight_price,
+            PriceHistory.hotel_price,
+        )
+        .order_by(PriceHistory.destination_id, PriceHistory.timestamp.desc())
+        .distinct(PriceHistory.destination_id)
+        .subquery()
+    )
 
     # Join destination data with weather and price
-    query = db.query(
-        Destination,
-        weather_subq.c.weather_score,
-        price_subq.c.flight_price,
-        price_subq.c.hotel_price
-    ).join(
-        weather_subq,
-        Destination.id == weather_subq.c.destination_id
-    ).join(
-        price_subq,
-        Destination.id == price_subq.c.destination_id
-    ).order_by(
-        weather_subq.c.weather_score.desc()
-    ).limit(limit).all()
+    query = (
+        db.query(
+            Destination,
+            weather_subq.c.weather_score,
+            price_subq.c.flight_price,
+            price_subq.c.hotel_price,
+        )
+        .join(weather_subq, Destination.id == weather_subq.c.destination_id)
+        .join(price_subq, Destination.id == price_subq.c.destination_id)
+        .order_by(weather_subq.c.weather_score.desc())
+        .limit(limit)
+        .all()
+    )
 
     # Format results
     results = []
     for dest, weather_score, flight_price, hotel_price in query:
-        results.append({
-            "id": dest.id,
-            "name": dest.name,
-            "country": dest.country,
-            "description": dest.description,
-            "weather_score": round(weather_score * 10) if weather_score else None,  # Scale to 0-100
-            "current_flight_price": flight_price,
-            "current_hotel_price": hotel_price,
-        })
+        results.append(
+            {
+                "id": dest.id,
+                "name": dest.name,
+                "country": dest.country,
+                "description": dest.description,
+                "weather_score": (
+                    round(weather_score * 10) if weather_score else None
+                ),  # Scale to 0-100
+                "current_flight_price": flight_price,
+                "current_hotel_price": hotel_price,
+            }
+        )
 
     return results

@@ -16,7 +16,7 @@ from app.models.user import User
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
-    bcrypt__rounds=12  # Higher rounds for better security
+    bcrypt__rounds=12,  # Higher rounds for better security
 )
 
 # OAuth2 scheme for token
@@ -49,15 +49,15 @@ def validate_password_strength(password: str) -> bool:
         return False
 
     # Check for at least one uppercase
-    if not re.search(r'[A-Z]', password):
+    if not re.search(r"[A-Z]", password):
         return False
 
     # Check for at least one lowercase
-    if not re.search(r'[a-z]', password):
+    if not re.search(r"[a-z]", password):
         return False
 
     # Check for at least one digit
-    if not re.search(r'\d', password):
+    if not re.search(r"\d", password):
         return False
 
     # Check for at least one special character
@@ -99,15 +99,21 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
     return encoded_jwt, expire
 
 
 # Dependency to get current user from token
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+):
     """
     Get the current user from the JWT token.
 
@@ -115,7 +121,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         UnauthorizedError: If token is invalid or user not found
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         user_id: int = payload.get("sub")
         email: str = payload.get("email")
 
@@ -138,7 +146,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 
 # Use this for optional authentication (some endpoints might work with or without auth)
-async def get_optional_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def get_optional_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+):
     """
     Get the current user if authenticated, otherwise return None.
     This is useful for endpoints that work for both authenticated and non-authenticated users.

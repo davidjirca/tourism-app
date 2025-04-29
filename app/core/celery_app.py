@@ -3,8 +3,7 @@ from app.core.config import settings
 
 # Create Celery app
 celery_app = Celery(
-    "tasks",
-    broker=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
+    "tasks", broker=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
 )
 
 # Celery configuration
