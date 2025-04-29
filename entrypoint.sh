@@ -16,7 +16,7 @@ done
 echo "Redis started"
 
 # Run database migrations or initialization if needed
-python -c "from database import create_tables, initialize_destinations; create_tables(); initialize_destinations();"
+python -c "from app.db.init_db import create_tables, initialize_destinations; from app.db.session import SessionLocal; db = SessionLocal(); create_tables(); initialize_destinations(db); db.close()"
 echo "Database initialized"
 
 # Execute the command provided as arguments to this script

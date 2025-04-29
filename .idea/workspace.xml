@@ -5,8 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1d481460-c7f0-469c-9d93-50b14c7b3f81" name="Changes" comment="code refinement">
+      <change afterPath="$PROJECT_DIR$/migrations/alembic/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/migrations/alembic/alembic.ini" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/migrations/alembic/env.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/migrations/alembic/versions/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/migrations/alembic/versions/initial_migrations.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.github/workflows/ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/entrypoint.sh" beforeDir="false" afterPath="$PROJECT_DIR$/entrypoint.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -27,18 +33,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "davidjirca"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;davidjirca&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/davidjirca/tourism-app.git",
-    "accountId": "55dfd47c-9314-4703-87b6-468bc9088437"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/davidjirca/tourism-app.git&quot;,
+    &quot;accountId&quot;: &quot;55dfd47c-9314-4703-87b6-468bc9088437&quot;
   }
-}]]></component>
+}</component>
   <component name="HttpClientSelectedEnvironments">
     <file url="file://$USER_HOME$/AppData/Local/Temp/whats-new-dir/whats-new.http" environment="test" />
   </component>
@@ -69,6 +75,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\David\Desktop\tourism-app\migrations\alembic" />
       <recent name="C:\Users\David\Desktop\tourism-app\app\api\routes" />
     </key>
   </component>
@@ -117,7 +124,15 @@
       <option name="project" value="LOCAL" />
       <updated>1745871719527</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="code refinement">
+      <option name="closed" value="true" />
+      <created>1745872429306</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1745872429306</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
